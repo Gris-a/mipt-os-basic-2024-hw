@@ -3,9 +3,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
+#include <stdint.h>
 
 typedef struct {
-    // TODO: add necessary members
+    int fd;
 } utf8_file_t;
 
 int utf8_write(utf8_file_t* f, const uint32_t* str, size_t count);

@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
             break;
         }
         if (res < 0) {
-            fprintf(stderr, "utf8_read failed: %s", strerror(errno));
+            fprintf(stderr, "utf8_read failed: %s\n", strerror(errno));
             return 1;
         }
 
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
         while (count > 0) {
             res = utf8_write(fout, curr, res);
             if (res <= 0) {
-                fprintf(stderr, "utf8_write failed: %s", strerror(errno));
+                fprintf(stderr, "utf8_write failed: %s\n", strerror(errno));
                 return 1;
             }
             count -= res;
