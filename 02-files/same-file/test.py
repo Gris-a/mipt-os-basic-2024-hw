@@ -50,7 +50,6 @@ def touch_test_files():
 
 if __name__ == "__main__":
     exe = pathlib.Path(sys.argv[1]).resolve()
-
     with tempfile.TemporaryDirectory() as tmpdir:
         os.chdir(tmpdir)
         touch_test_files()

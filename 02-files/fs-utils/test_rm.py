@@ -31,7 +31,6 @@ def multi_args(tmpdir):
 def delete_directory_only_with_r(tmpdir):
     return [tmpdir], None
 
-
 run_test(simple)
 run_test(multi_args)
 run_test(delete_directory_only_with_r, fail=True)

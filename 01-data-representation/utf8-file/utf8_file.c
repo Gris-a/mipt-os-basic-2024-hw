@@ -1,49 +1,61 @@
-#include <unistd.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include "utf8_file.h"
 
 #define MAX_CODE_SZ 6
-#define MAX_ONE_BYTE_CODE 0x7F
 
-#define FORMAT_BYTE(byte) (byte & 0x3F) | 0x80
-#define NEXT_BYTE(code) code >>= 6
-#define FORMAT_LAST(byte, code_sz) (((1 << code_sz) - 1) << (8 - code_sz)) | byte
+#define ROTL_UINT32_T(num, k) ((num) << (k)) | ((num) >> (32 - (k)))
+#define ROTR_UINT32_T(num, k) ((num) >> (k)) | ((num) << (32 - (k)))
 
-#define CODE_FIRST(code_sz, byte) byte & ((1 << (8 - code_sz)) - 1)
-#define CODE_NEXT(code, byte) code = (code << 6) | (byte & 0x3F)
+#define FIRST_N_BITS(num, n) ((num) & ((1 << (n)) - 1))
+
 
 int utf8_write(utf8_file_t* f, const uint32_t* str, size_t count) {
     for(size_t i = 0; i < count; i++) {
         uint32_t code = str[i];
-        if(code <= MAX_ONE_BYTE_CODE) {
-            uint8_t byte = code;
-            int out = write(f->fd, &byte, 1);
 
-            if(out != 1) {
-                errno = EIO;
-                return -1;
-            }
+        size_t n_bytes;
+        uint8_t mask;
 
-            continue;
+        if(code < 0x00000080) {
+            n_bytes = 1;
+            mask = 0x00;
+        } else if(code < 0x00000800) {
+            n_bytes = 2;
+            mask = 0xC0;
+        } else if(code < 0x00010000) {
+            n_bytes = 3;
+            mask = 0xE0;
+        } else if(code < 0x00200000) {
+            n_bytes = 4;
+            mask = 0xF0;
+        } else if(code < 0x04000000) {
+            n_bytes = 5;
+            mask = 0xF8;
+        } else if(code < 0x80000000) {
+            n_bytes = 6;
+            mask = 0xFC;
+        } else {
+            return -1;
         }
 
-        int n_bytes = 0;
-        uint8_t bytes[MAX_CODE_SZ] = {};
+        code = ROTR_UINT32_T(code, 6 * (n_bytes - 1));
+        uint8_t first_byte = (n_bytes == 1) ? FIRST_N_BITS(code, 7) | mask
+                                            : FIRST_N_BITS(code, (7 - n_bytes)) | mask;
 
-        do {
-            bytes[n_bytes++] = FORMAT_BYTE(code);
-            NEXT_BYTE(code);
-        } while(code >= (1 << (6 - n_bytes)));
+        uint8_t bytes[MAX_CODE_SZ] = {first_byte};
 
-        n_bytes++;
-        bytes[n_bytes - 1] = FORMAT_LAST(code, n_bytes);
+        for(size_t i = 1; i < n_bytes; i++) {
+            bytes[i] = FIRST_N_BITS(code = ROTL_UINT32_T(code, 6), 6) | 0x80;
+        }
 
-        for(int i = n_bytes - 1; i >= 0; i--)
+        for(int i = 0; i < n_bytes; i++)
         {
             int out = write(f->fd, bytes + i, 1);
 
-            if(out != 1) { // TODO
+            if(out != 1) {
                 errno = EIO;
                 return -1;
             }
@@ -73,7 +85,7 @@ int utf8_read(utf8_file_t* f, uint32_t* res, size_t count) {
             return -1;
         }
 
-        uint32_t symbol = CODE_FIRST(n_bytes, first_byte);
+        uint32_t symbol = FIRST_N_BITS(first_byte, 8 - n_bytes);
 
         for(int j = 1; j < n_bytes; j++) {
             uint8_t byte;
@@ -83,7 +95,8 @@ int utf8_read(utf8_file_t* f, uint32_t* res, size_t count) {
                 errno = EIO;
                 return -1;
             }
-            CODE_NEXT(symbol, byte);
+
+            symbol = (symbol << 6) | FIRST_N_BITS(byte, 6);
         }
         res[i] = symbol;
     }
@@ -92,8 +105,8 @@ int utf8_read(utf8_file_t* f, uint32_t* res, size_t count) {
 
 utf8_file_t* utf8_fromfd(int fd) {
     utf8_file_t *file = (utf8_file_t *)calloc(1, sizeof(utf8_file_t));
-    if(!file)
-    {
+
+    if(!file) {
         errno = ENOMEM;
         return NULL;
     }

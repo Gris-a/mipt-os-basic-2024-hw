@@ -38,6 +38,6 @@ def with_umasked_mode(tmpdir):
 
 
 run_test(simple)
-run_test(with_parents)
 run_test(with_no_parents, fail=True)
 run_test(with_mode)
+run_test(with_parents)
