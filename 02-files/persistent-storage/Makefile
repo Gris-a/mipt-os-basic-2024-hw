@@ -24,7 +24,7 @@ run: tester
 	ls -ld ./stress_root/ca | wc -l > count
 	cat count | xargs test 1 -ge
 	# ======================================
-	
+
 	rm -rf unit_root persistence_root stress_root count tester
 
 .PHONY: run

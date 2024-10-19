@@ -142,7 +142,7 @@ void test_many_values(storage_t* storage) {
     for (version_t version = 1; version <= STRESS_VALUES_COUNT; ++version) {
         char returned_value[MAX_VALUE_SIZE];
         version_t get_version = storage_get_by_version(storage, STRESS_SAMPLE_KEY, version, returned_value);
-        
+
         assert(get_version == version && "Version mismatch!");
         assert((!strcmp(returned_value, STRESS_SAMPLE_VALUE)) && "Returned value mismatch!");
     }
